@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudos Banestes - Técnico Bancário</title>
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDKs (Compat v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+</head>
+<body>
+
+    <div class="app-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>banestes.pro</span>
+                </div>
+                <button class="icon-top-btn" onclick="alternarTema()" id="themeToggleBtn" title="Alternar Tema Claro/Escuro">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+            </div>
+
+            <div class="sidebar-profile">
+                <div class="avatar-ring">
+                    <img id="sidebarAvatarImg" src="https://ui-avatars.com/api/?name=Victor+Gomes&background=ffffff&color=7c5cc4&bold=true&size=128" alt="Avatar">
+                    <label for="profilePhotoInput" class="avatar-edit-badge" title="Trocar Foto">
+                        <i class="fa-solid fa-camera"></i>
+                    </label>
+                    <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this)">
+                </div>
+                <div class="profile-name" id="userNameDisplay" onclick="editarNomeUsuario()" title="Clique para alterar seu nome">Victor Félix</div>
+                <div class="profile-role">Técnico Bancário • FCC</div>
+                <div id="syncStatusBadge" style="margin-top:6px; font-size:0.68rem; background:rgba(255,255,255,0.18); padding:3px 9px; border-radius:99px;">
+                    <i class="fa-solid fa-cloud"></i> Conectando...
+                </div>
+            </div>
+
+            <div class="sidebar-nav-wrap">
+                <div class="nav-grid" id="navGrid">
+                    <button class="nav-tile active" onclick="showTab('dashboard', this)">
+                        <span class="tile-icon"><i class="fa-solid fa-chart-pie"></i></span>
+                        <span>Visão Geral</span>
+                    </button>
+                    <button class="nav-tile" onclick="showTab('questoesTab', this)">
+                        <span class="tile-icon"><i class="fa-solid fa-bullseye"></i></span>
+                        <span>Questões</span>
+                    </button>
+                    <button class="nav-tile" onclick="showTab('anotacoesTab', this)">
+                        <span class="tile-icon"><i class="fa-solid fa-folder-open"></i></span>
+                        <span>Anotações</span>
+                    </button>
+                    <button class="nav-tile" onclick="showTab('registrar', this)">
+                        <span class="tile-icon"><i class="fa-solid fa-clock"></i></span>
+                        <span>Registrar Horas</span>
+                    </button>
+                    <button class="nav-tile" onclick="showTab('edital', this)">
+                        <span class="tile-icon"><i class="fa-solid fa-book-open"></i></span>
+                        <span>Meu Edital</span>
+                    </button>
+                    <button class="nav-tile" onclick="showTab('personalizar', this)">
+                        <span class="tile-icon"><i class="fa-solid fa-sliders"></i></span>
+                        <span>Personalizar</span>
+                    </button>
+                    <button class="nav-tile" onclick="logout()" style="grid-column: span 2; color: var(--danger);">
+                        <span class="tile-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+                        <span>Sair da Conta</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN AREA -->
+        <div class="main-area">
+            <header class="hero-banner">
+                <div class="hero-top-bar">
+                    <div class="search-pill" onclick="showTab('anotacoesTab', document.querySelectorAll('.nav-tile')[2])">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span>Buscar em matérias, tópicos ou anotações...</span>
+                    </div>
+                    <div class="hero-actions">
+                        <span class="exam-tag"><i class="fa-solid fa-building-columns"></i> Banestes • FCC (Peso 1 e 2)</span>
+                        <button class="icon-top-btn" onclick="exportBackup()" title="Exportar Backup JSON"><i class="fa-solid fa-download"></i></button>
+                    </div>
+                </div>
+                <div class="hero-welcome">
+                    <h1 id="welcomeTitle">Bem-vindo aos seus Estudos!</h1>
+                    <p>Controle de Horas por Matéria, Estatísticas de Questões (3 Níveis) e Caderno de Anotações.</p>
+                </div>
+            </header>
+
+            <main class="main-container">
+                <!-- 4 CARDS SUPERIORES -->
+                <div class="top-stats-grid">
+                    <div class="stacked-card" onclick="showTab('questoesTab', document.querySelectorAll('.nav-tile')[1])">
+                        <div class="stacked-header">Questões Resolvidas</div>
+                        <div class="stacked-body">
+                            <div class="stacked-icon"><i class="fa-solid fa-pen-to-square"></i></div>
+                            <div class="stacked-metric">
+                                <div class="val" id="cardTotalQuestions">0</div>
+                                <div class="lbl">Questões Feitas</div>
+                            </div>
+                        </div>
+                        <div class="stacked-footer">Soma de todas as 9 matérias do edital</div>
+                    </div>
+
+                    <div class="stacked-card" onclick="showTab('questoesTab', document.querySelectorAll('.nav-tile')[1])">
+                        <div class="stacked-header">Acertos & Precisão</div>
+                        <div class="stacked-body">
+                            <div class="stacked-icon teal"><i class="fa-solid fa-circle-check"></i></div>
+                            <div class="stacked-metric">
+                                <div class="val" id="cardAccuracy">0%</div>
+                                <div class="lbl"><span id="cardTotalCorrect">0</span> Acertos Totais</div>
+                            </div>
+                        </div>
+                        <div class="stacked-footer">Meta recomendada para aprovação: <strong>80%+</strong></div>
+                    </div>
+
+                    <div class="stacked-card" onclick="showTab('registrar', document.querySelectorAll('.nav-tile')[3])">
+                        <div class="stacked-header">Tempo de Estudo</div>
+                        <div class="stacked-body">
+                            <div class="stacked-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+                            <div class="stacked-metric">
+                                <div class="val" id="cardTotalHours">0h</div>
+                                <div class="lbl">Horas Acumuladas</div>
+                            </div>
+                        </div>
+                        <div class="stacked-footer">Distribuídas por matéria e calendário diário</div>
+                    </div>
+
+                    <div class="stacked-card" onclick="showTab('anotacoesTab', document.querySelectorAll('.nav-tile')[2])">
+                        <div class="stacked-header">Caderno & Edital</div>
+                        <div class="stacked-body">
+                            <div class="stacked-icon teal"><i class="fa-solid fa-folder-tree"></i></div>
+                            <div class="stacked-metric">
+                                <div class="val" id="cardTotalNotes">0</div>
+                                <div class="lbl">Anotações (<span id="cardEditalPerc">0%</span> Edital)</div>
+                            </div>
+                        </div>
+                        <div class="stacked-footer"><span id="cardEditalCount">0/109</span> tópicos concluídos</div>
+                    </div>
+                </div>
+
+                <!-- ABA 1: DASHBOARD -->
+                <section id="dashboard" class="section active">
+                    <div class="dashboard-row">
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <div>
+                                    <h2><i class="fa-solid fa-chart-column" style="color:var(--primary);"></i> Ritmo Diário e Matérias Estudadas no Dia</h2>
+                                    <p class="panel-subtitle">Cada barra exibe as horas e o nome das matérias estudadas naquele dia</p>
+                                </div>
+                                <div class="pill-tabs" id="chartDayButtons">
+                                    <button class="pill-tab active" onclick="setChartDays(7, this)">7 Dias</button>
+                                    <button class="pill-tab" onclick="setChartDays(15, this)">15 Dias</button>
+                                    <button class="pill-tab" onclick="setChartDays(30, this)">30 Dias</button>
+                                </div>
+                            </div>
+                            <div style="height: 310px; position: relative;">
+                                <canvas id="studyChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <div>
+                                    <h2><i class="fa-solid fa-chart-pie" style="color:var(--secondary);"></i> Horas por Matéria</h2>
+                                    <p class="panel-subtitle">Distribuição do seu tempo</p>
+                                </div>
+                            </div>
+                            <div class="donut-container">
+                                <canvas id="hoursDonutChart"></canvas>
+                                <div class="donut-center">
+                                    <div class="big" id="donutCenterHours">0h</div>
+                                    <div class="small">Total</div>
+                                </div>
+                            </div>
+                            <div id="subjectHoursMiniList" style="margin-top: 16px; max-height: 150px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <!-- RESUMO 3 NÍVEIS NO DASHBOARD -->
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h2><i class="fa-solid fa-sitemap" style="color:var(--primary);"></i> Visão Rápida: Total Geral &gt; Por Matéria &gt; Por Tópico</h2>
+                                <p class="panel-subtitle">Clique em qualquer matéria para expandir seus tópicos ou edite as horas diretamente</p>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn btn-outline btn-sm" onclick="toggleAllHierarchy('dashboardHierarchyRoot', true)"><i class="fa-solid fa-angles-down"></i> Expandir Tudo</button>
+                                <button class="btn btn-outline btn-sm" onclick="toggleAllHierarchy('dashboardHierarchyRoot', false)"><i class="fa-solid fa-angles-up"></i> Recolher Tudo</button>
+                            </div>
+                        </div>
+                        <div id="dashboardHierarchyRoot"></div>
+                    </div>
+
+                    <!-- CALENDÁRIO HEATMAP -->
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h2><i class="fa-solid fa-calendar-days" style="color:var(--primary);"></i> Constância Mensal (Horas e Matérias do Dia)</h2>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+                                <strong id="calendarMonthYear" style="min-width:140px; text-align:center;">Mês Ano</strong>
+                                <button class="btn btn-outline btn-sm" onclick="changeMonth(1)"><i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+                        </div>
+                        <div class="calendar-grid" id="calendarGrid"></div>
+                    </div>
+                </section>
+
+                <!-- ABA 2: QUESTÕES (EXCLUSIVA) -->
+                <section id="questoesTab" class="section">
+                    <div class="panel-card" style="border-left: 5px solid var(--primary);">
+                        <div class="panel-header">
+                            <div>
+                                <h2><i class="fa-solid fa-plus-circle" style="color:var(--primary);"></i> Lançar / Somar Estatísticas de Questões</h2>
+                                <p class="panel-subtitle">Escolha a matéria e o tópico para adicionar novas baterias de questões resolvidas</p>
+                            </div>
+                        </div>
+                        <div class="form-row-4">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label><i class="fa-solid fa-book"></i> 1. Matéria</label>
+                                <select id="qQuickSubject" onchange="updateQuickQuestionTopics()"></select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label><i class="fa-solid fa-list-ul"></i> 2. Tópico / Submatéria</label>
+                                <select id="qQuickTopic"></select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label><i class="fa-solid fa-pen"></i> 3. Questões Resolvidas</label>
+                                <input type="number" id="qQuickTotal" min="1" placeholder="Ex: 20">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label><i class="fa-solid fa-check"></i> 4. Quantas Acertou</label>
+                                <input type="number" id="qQuickCorrect" min="0" placeholder="Ex: 17">
+                            </div>
+                            <button class="btn" onclick="lancarQuestoesRapido()" style="height:44px;">
+                                <i class="fa-solid fa-plus"></i> Somar Questões
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h2><i class="fa-solid fa-layer-group" style="color:var(--primary);"></i> Estatísticas de Questões (1º Total Geral &gt; 2º Por Matéria &gt; 3º Por Tópico)</h2>
+                                <p class="panel-subtitle">Você também pode digitar os valores exatos de Acertos e Questões diretamente dentro de cada tópico abaixo</p>
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <select id="filterQuestoesSubject" onchange="renderQuestoesTab()" style="width:auto; min-width:210px; padding:7px 12px;">
+                                    <option value="all">Todas as 9 Matérias</option>
+                                </select>
+                                <button class="btn btn-outline btn-sm" onclick="toggleAllHierarchy('questoesHierarchyRoot', true)"><i class="fa-solid fa-angles-down"></i> Expandir Tópicos</button>
+                                <button class="btn btn-outline btn-sm" onclick="toggleAllHierarchy('questoesHierarchyRoot', false)"><i class="fa-solid fa-angles-up"></i> Recolher Tópicos</button>
+                            </div>
+                        </div>
+                        <div id="questoesHierarchyRoot"></div>
+                    </div>
+                </section>
+
+                <!-- ABA 3: ANOTAÇÕES (PASTAS POR MATÉRIA > TÓPICO + TEXTO/IMAGEM/PDF) -->
+                <section id="anotacoesTab" class="section">
+                    <div class="panel-card" style="padding: 18px 22px;">
+                        <div class="panel-header" style="margin-bottom: 12px;">
+                            <div>
+                                <h2><i class="fa-solid fa-folder-open" style="color:var(--primary);"></i> Meu Caderno de Anotações por Pastas do Edital</h2>
+                                <p class="panel-subtitle">Cada matéria possui uma pasta com todas as submatérias/tópicos do edital. Adicione textos, imagens ou PDFs.</p>
+                            </div>
+                        </div>
+
+                        <div class="notes-workspace">
+                            <!-- ÁRVORE DE PASTAS -->
+                            <div class="notes-tree-panel">
+                                <div class="notes-tree-header">
+                                    <span><i class="fa-solid fa-folder-tree"></i> Pastas (Matéria &gt; Tópico)</span>
+                                    <span id="totalNotesCounterBadge" style="font-size:0.72rem; color:var(--primary);">0 notas</span>
+                                </div>
+                                <div class="notes-tree-search">
+                                    <input type="text" id="notesFolderSearch" placeholder="Filtrar matéria ou tópico..." oninput="renderNotesFolderTree()">
+                                </div>
+                                <div class="notes-tree-list" id="notesFolderTree"></div>
+                            </div>
+
+                            <!-- PAINEL DE CONTEÚDO DO TÓPICO -->
+                            <div class="notes-content-panel">
+                                <div class="notes-content-header">
+                                    <div class="notes-breadcrumb" id="notesBreadcrumb">
+                                        <span class="subj-crumb"><i class="fa-solid fa-folder"></i> Selecione uma Matéria</span>
+                                        <span class="topic-crumb">Clique em um tópico na árvore ao lado</span>
+                                    </div>
+                                    <button class="btn btn-sm" id="btnToggleNoteComposer" onclick="toggleNoteComposer()">
+                                        <i class="fa-solid fa-plus"></i> Nova Anotação / Arquivo
+                                    </button>
+                                </div>
+
+                                <!-- CRIADOR DE ANOTAÇÃO -->
+                                <div class="note-composer" id="noteComposerBox">
+                                    <div class="form-row-2" style="margin-bottom:10px;">
+                                        <div>
+                                            <label>Título da Anotação</label>
+                                            <input type="text" id="noteTitleInput" placeholder="Ex: Resumo de Crase, Bizu da FCC, Mapa Mental...">
+                                        </div>
+                                        <div>
+                                            <label>Anexar Imagem ou PDF (Opcional - ou cole imagem com Ctrl+V)</label>
+                                            <label for="noteFilesInput" class="file-drop-zone" style="display:block; margin-top:0;">
+                                                <i class="fa-solid fa-cloud-arrow-up"></i> Escolher Imagem (PNG/JPG) ou PDF
+                                            </label>
+                                            <input type="file" id="noteFilesInput" accept="image/*,application/pdf" multiple style="display:none;" onchange="handleNoteFilesSelect(this)">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label>Texto da Anotação</label>
+                                        <textarea id="noteTextInput" placeholder="Escreva suas anotações, pontos importantes da aula, artigos de lei ou macetes aqui..."></textarea>
+                                    </div>
+                                    <div class="pending-files-list" id="pendingFilesPreview"></div>
+                                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+                                        <button class="btn btn-outline btn-sm" onclick="clearNoteComposer()"><i class="fa-solid fa-eraser"></i> Limpar</button>
+                                        <button class="btn btn-teal btn-sm" onclick="saveNewNote()"><i class="fa-solid fa-floppy-disk"></i> Salvar Anotação na Pasta</button>
+                                    </div>
+                                </div>
+
+                                <!-- LISTA DE ANOTAÇÕES DO TÓPICO -->
+                                <div class="notes-cards-area" id="notesCardsArea"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ABA 4: REGISTRAR HORAS -->
+                <section id="registrar" class="section">
+                    <div class="dashboard-row">
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <div>
+                                    <h2><i class="fa-solid fa-clock" style="color:var(--primary);"></i> Registrar Sessão de Estudo</h2>
+                                    <p class="panel-subtitle">As horas alimentam a matéria e exibem o nome da matéria na barra do gráfico do dia</p>
+                                </div>
+                            </div>
+
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="studyDate"><i class="fa-regular fa-calendar"></i> 1. Data do Estudo</label>
+                                    <input type="date" id="studyDate">
+                                </div>
+                                <div class="form-group">
+                                    <label for="studyHours"><i class="fa-regular fa-clock"></i> 2. Horas Estudadas</label>
+                                    <input type="number" id="studyHours" step="0.25" min="0" placeholder="Ex: 1.5 para 1h30min">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="selectSubject"><i class="fa-solid fa-book"></i> 3. Matéria Estudada</label>
+                                <select id="selectSubject" onchange="updateTopicSelect()"></select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="selectTopic"><i class="fa-solid fa-list-check"></i> 4. Tópico / Assunto</label>
+                                <select id="selectTopic"></select>
+                            </div>
+
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="sessionProgress"><i class="fa-solid fa-bookmark"></i> Onde parou / Observação (Opcional)</label>
+                                    <input type="text" id="sessionProgress" placeholder="Ex: Finalizei PDF Aula 02, pág. 35">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fa-solid fa-check-double"></i> Concluiu a teoria deste tópico?</label>
+                                    <select id="sessionMarkCompleted">
+                                        <option value="no">Ainda em andamento</option>
+                                        <option value="yes">✅ Sim, marcar tópico como concluído</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button class="btn" style="width:100%;" onclick="registerStudySession()">
+                                <i class="fa-solid fa-floppy-disk"></i> Salvar Registro de Horas
+                            </button>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <div>
+                                    <h2><i class="fa-solid fa-hourglass-Half" style="color:var(--secondary);"></i> Ajuste Direto de Horas por Matéria</h2>
+                                    <p class="panel-subtitle">Edite o total acumulado de horas de qualquer matéria</p>
+                                </div>
+                            </div>
+                            <div id="directSubjectHoursList" style="max-height: 410px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h2><i class="fa-solid fa-clock-rotate-left" style="color:var(--primary);"></i> Histórico de Sessões Registradas</h2>
+                            </div>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="clean-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Matéria</th>
+                                        <th>Tópico</th>
+                                        <th>Horas</th>
+                                        <th>Observação</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="registrarLogBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ABA 5: MEU EDITAL VERTICALIZADO -->
+                <section id="edital" class="section">
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h2><i class="fa-solid fa-list-check" style="color:var(--primary);"></i> Edital Verticalizado Banestes — Técnico Bancário</h2>
+                                <p class="panel-subtitle">Use o botão Recolher/Expandir no canto direito de cada matéria para não precisar rolar até o fim</p>
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button class="btn btn-outline btn-sm" onclick="toggleAllEditalSubjects(true)">
+                                    <i class="fa-solid fa-angles-down"></i> Expandir Todas
+                                </button>
+                                <button class="btn btn-outline btn-sm" onclick="toggleAllEditalSubjects(false)">
+                                    <i class="fa-solid fa-angles-up"></i> Recolher Todas
+                                </button>
+                                <input type="text" id="newSubjectName" placeholder="Nova matéria extra..." style="width:190px; padding:7px 12px;">
+                                <button class="btn btn-sm" onclick="addSubject()"><i class="fa-solid fa-plus"></i> Matéria</button>
+                            </div>
+                        </div>
+                        <div id="editalProgressBanner" style="margin-bottom:20px;"></div>
+                        <div id="editalStructure"></div>
+                    </div>
+                </section>
+
+                <!-- ABA 6: PERSONALIZAR -->
+                <section id="personalizar" class="section">
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h2><i class="fa-solid fa-palette" style="color:var(--primary);"></i> Personalizar Cores e Backup</h2>
+                                <p class="panel-subtitle">Fonte definida globalmente como Helvetica e botões expandidos (+1px)</p>
+                            </div>
+                        </div>
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label>Cor Principal (Roxo Padrão)</label>
+                                <input type="color" id="colorPrimaryPicker" value="#7c5cc4" onchange="updateThemeColor('--primary', this.value)" style="height:46px; padding:4px;">
+                            </div>
+                            <div class="form-group">
+                                <label>Cor Secundária (Turquesa Padrão)</label>
+                                <input type="color" id="colorSecondaryPicker" value="#17bebb" onchange="updateThemeColor('--secondary', this.value)" style="height:46px; padding:4px;">
+                            </div>
+                            <div class="form-group">
+                                <label>Tamanho da Fonte Global</label>
+                                <input type="range" id="fontSizeRange" min="14" max="20" value="16" oninput="changeRootFontSize(this.value)">
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px;">
+                            <button class="btn btn-outline" onclick="resetThemeColors()"><i class="fa-solid fa-rotate-left"></i> Restaurar Cores Originais</button>
+                            <button class="btn btn-teal" onclick="exportBackup()"><i class="fa-solid fa-file-export"></i> Baixar Backup Completo (.JSON)</button>
+                            <button class="btn btn-danger" onclick="resetToDefaultBanestes()"><i class="fa-solid fa-triangle-exclamation"></i> Zerar Progresso para Edital Limpo</button>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- MODAL DE VISUALIZAÇÃO DE IMAGEM / PDF -->
+    <div class="modal-backdrop" id="attachmentModal" onclick="if(event.target===this) closeAttachmentModal()">
+        <div class="modal-box">
+            <div class="modal-header">
+                <strong id="modalTitle"><i class="fa-solid fa-eye"></i> Visualizar Anexo</strong>
+                <button class="btn btn-danger btn-sm" onclick="closeAttachmentModal()"><i class="fa-solid fa-xmark"></i> Fechar</button>
+            </div>
+            <div class="modal-body" id="modalBodyContent"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

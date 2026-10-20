@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Plataforma de Estudos Banestes</title>
+    <!-- Biblioteca de Ícones FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDKs (Compat v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+</head>
+<body class="login-page-body">
+
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fa-solid fa-Graduation-cap"></i>
+                <div class="login-logo-icon"><i class="fa-solid fa-layer-group"></i></div>
+                <span>BANESTES <strong>PRO</strong></span>
+            </div>
+
+            <h1 id="formTitle">Bem-vindo de volta!</h1>
+            <p class="login-subtitle" id="formSubtitle">Acesse seu painel de estudos e edital verticalizado</p>
+
+            <div id="errorMsg" class="login-alert" style="display: none;"></div>
+
+            <div class="form-group">
+                <label for="email"><i class="fa-regular fa-envelope"></i> E-mail</label>
+                <input type="email" id="email" placeholder="seuemail@exemplo.com" autocomplete="email" onkeypress="if(event.key==='Enter') acaoPrincipal()">
+            </div>
+
+            <div class="form-group">
+                <label for="senha"><i class="fa-solid fa-lock"></i> Senha</label>
+                <input type="password" id="senha" placeholder="••••••••" autocomplete="current-password" onkeypress="if(event.key==='Enter') acaoPrincipal()">
+            </div>
+
+            <button id="actionBtn" class="btn-login-green" onclick="acaoPrincipal()">
+                <i class="fa-solid fa-right-to-bracket"></i> <span id="actionBtnText">Entrar na Plataforma</span>
+            </button>
+
+            <div class="login-footer">
+                <span id="toggleQuestion">Ainda não tem uma conta?</span>
+                <a id="toggleLink" onclick="alternarModo()">Criar conta grátis</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let modoCadastro = false;
+
+        function alternarModo() {
+            modoCadastro = !modoCadastro;
+            const err = document.getElementById('errorMsg');
+            err.style.display = 'none';
+
+            if (modoCadastro) {
+                document.getElementById('formTitle').innerText = 'Criar Nova Conta';
+                document.getElementById('formSubtitle').innerText = 'Comece a organizar suas horas, questões e anotações';
+                document.getElementById('actionBtnText').innerText = 'Cadastrar e Entrar';
+                document.getElementById('toggleQuestion').innerText = 'Já possui cadastro?';
+                document.getElementById('toggleLink').innerText = 'Fazer Login';
+            } else {
+                document.getElementById('formTitle').innerText = 'Bem-vindo de volta!';
+                document.getElementById('formSubtitle').innerText = 'Acesse seu painel de estudos e edital verticalizado';
+                document.getElementById('actionBtnText').innerText = 'Entrar na Plataforma';
+                document.getElementById('toggleQuestion').innerText = 'Ainda não tem uma conta?';
+                document.getElementById('toggleLink').innerText = 'Criar conta grátis';
+            }
+        }
+
+        function mostrarErro(msg) {
+            const el = document.getElementById('errorMsg');
+            el.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${msg}`;
+            el.style.display = 'flex';
+        }
+
+        function traduzirErro(code) {
+            const erros = {
+                'auth/invalid-email': 'O formato do e-mail é inválido.',
+                'auth/user-not-found': 'Usuário não encontrado com este e-mail.',
+                'auth/wrong-password': 'Senha incorreta.',
+                'auth/invalid-credential': 'E-mail ou senha incorretos.',
+                'auth/email-already-in-use': 'Este e-mail já está cadastrado.',
+                'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.'
+            };
+            return erros[code] || 'Erro ao autenticar (' + code + '). Verifique seu firebase-config.js.';
+        }
+
+        function acaoPrincipal() {
+            const email = document.getElementById('email').value.trim();
+            const senha = document.getElementById('senha').value;
+            const btn = document.getElementById('actionBtn');
+
+            if (!email || !senha) {
+                return mostrarErro('Preencha seu e-mail e sua senha.');
+            }
+
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+
+            if (modoCadastro) {
+                auth.createUserWithEmailAndPassword(email, senha)
+                    .then(() => { window.location.href = 'index.html'; })
+                    .catch(err => {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                        mostrarErro(traduzirErro(err.code));
+                    });
+            } else {
+                auth.signInWithEmailAndPassword(email, senha)
+                    .then(() => { window.location.href = 'index.html'; })
+                    .catch(err => {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                        mostrarErro(traduzirErro(err.code));
+                    });
+            }
+        }
+
+        // Redireciona automaticamente se já estiver logado
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>
